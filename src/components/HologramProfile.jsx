@@ -28,7 +28,9 @@ const details = [
 
 export default function HologramProfile() {
   // Transparent PNG with the background removed
-  const photo = '/images/profile.png';
+  
+  const photo = `${import.meta.env.BASE_URL}images/profile.png`;
+
 
   // Rotate the hologram according to mouse position
   function handleMove(event) {
