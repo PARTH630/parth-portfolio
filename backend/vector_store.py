@@ -37,7 +37,7 @@ def get_embedding_model():
         model_name=EMBEDDING_MODEL,
         model_kwargs={
             "device": "cpu",
-            "local_files_only": True
+            "local_files_only": False
         },
         encode_kwargs={
             "normalize_embeddings": True
@@ -101,23 +101,36 @@ def create_vector_store():
 # STEP 3 — LOAD EXISTING VECTOR DATABASE
 # =========================================
 
+
+
 def load_vector_store():
+    """
+    Load the existing ChromaDB vector store.
 
-    if not DB_PATH.exists():
-        raise FileNotFoundError(
-            "Vector database not found. "
-            "Run python vector_store.py first."
-        )
+    If the database does not exist (for example,
+    on a fresh Render deployment), create it
+    automatically.
 
+    Markdown documents will be indexed separately
+    by sync_knowledge_base() during startup.
+    """
+
+    # Create database directory if missing
+    DB_PATH.mkdir(parents=True, exist_ok=True)
+
+    # Initialize CPU embedding model
     embeddings = get_embedding_model()
 
+    # Load or create ChromaDB collection
     vector_store = Chroma(
         collection_name=COLLECTION_NAME,
         embedding_function=embeddings,
-        persist_directory=str(DB_PATH)
+        persist_directory=str(DB_PATH),
     )
 
     return vector_store
+
+
 
 
 # =========================================
