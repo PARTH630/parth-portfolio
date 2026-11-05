@@ -1,0 +1,386 @@
+
+/* ========================================
+   GOTHAM SHARED CINEMATIC BACKGROUND
+======================================== */
+
+/* Wrapper for all sections except Home */
+.cinematic-sections {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  background: #080b10;
+}
+
+/* One sticky video layer behind all sections */
+.sections-video-layer {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+
+  margin-bottom: -100vh;
+  overflow: hidden;
+
+  pointer-events: none;
+}
+
+/* Video fills the browser viewport */
+.sections-bg-video {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+
+  filter:
+    grayscale(55%)
+    brightness(0.65)
+    contrast(1.1);
+
+  opacity: 0.85;
+}
+
+/* Dark atmosphere over video */
+.sections-video-overlay {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(5, 8, 12, 0.72),
+      rgba(7, 10, 15, 0.78)
+    ),
+    radial-gradient(
+      ellipse at 72% 38%,
+      rgba(39, 120, 160, 0.12),
+      transparent 60%
+    );
+
+  pointer-events: none;
+}
+
+/* Keep the section content above the video */
+.cinematic-sections > section {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+
+  isolation: isolate;
+}
+
+
+/* Keep section contents visible */
+.cinematic-sections > section > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile support */
+@media (max-width: 768px) {
+  .sections-bg-video {
+    object-position: center;
+    filter: brightness(0.5) grayscale(65%);
+  }
+
+  .sections-video-overlay {
+    background: rgba(5, 8, 12, 0.82);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .sections-video-layer video {
+    display: none;
+  }
+
+}
+
+
+/* =====================================
+   CLEAR VIDEO BACKGROUND
+===================================== */
+
+.cinematic-sections {
+  position: relative;
+  isolation: isolate;
+  background: #080b10;
+}
+
+/* Keep one continuous background video */
+.sections-video-layer {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  height: 100vh;
+  height: 100dvh;
+  margin-bottom: -100dvh;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Make the video more visible */
+.sections-bg-video {
+  opacity: 1 !important;
+  filter: brightness(0.85) contrast(1.08) !important;
+}
+
+/* Less dark overlay */
+.sections-video-overlay {
+  background: rgba(5, 8, 12, 0.48) !important;
+}
+
+/* Remove all old section backgrounds */
+.cinematic-sections > section {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Remove previous yellow gradients / fog */
+.cinematic-sections > section::before,
+.cinematic-sections > section::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Remove background from large inner wrappers,
+   but do not change individual cards yet */
+.cinematic-sections .section-container {
+  background: transparent !important;
+  box-shadow: none;
+}
+
+
+/* =====================================
+   BATCOMPUTER 3D GLASS CARDS
+===================================== */
+
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card
+) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+
+  background: rgba(16, 21, 29, 0.30) !important;
+  background-image: none !important;
+
+  border: 1px solid rgba(220, 228, 237, 0.17);
+  border-radius: 18px;
+
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+
+  box-shadow:
+    0 16px 35px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+
+  transform: perspective(1000px)
+    rotateX(0deg)
+    rotateY(0deg)
+    translateY(0);
+
+  transform-style: preserve-3d;
+
+  transition:
+    transform 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    background 0.35s ease;
+}
+
+/* Subtle gold edge light */
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card
+)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  border-radius: inherit;
+  background: linear-gradient(
+    130deg,
+    rgba(230, 185, 63, 0.10),
+    transparent 35%,
+    transparent 70%,
+    rgba(120, 195, 225, 0.06)
+  );
+}
+
+/* Keep all card content above light effect */
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card
+) > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Floating card on hover */
+@media (hover: hover) and (pointer: fine) {
+  .cinematic-sections :is(
+    .skill-card,
+    .project-card,
+    .experience-card,
+    .achievement-card,
+    .about-card,
+    .contact-card
+  ):hover {
+    transform:
+      perspective(1000px)
+      rotateX(3deg)
+      rotateY(-3deg)
+      translateY(-9px);
+
+    background: rgba(20, 27, 36, 0.42) !important;
+    border-color: rgba(230, 185, 63, 0.55);
+
+    box-shadow:
+      0 25px 55px rgba(0, 0, 0, 0.48),
+      0 0 25px rgba(230, 185, 63, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  }
+}
+
+/* Gold highlights for small skill tags */
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card
+) :is(.tag, .skill-tag, .tech-tag) {
+  background: rgba(24, 30, 39, 0.42);
+  border: 1px solid rgba(230, 185, 63, 0.16);
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .cinematic-sections :is(
+    .skill-card,
+    .project-card,
+    .experience-card,
+    .achievement-card,
+    .about-card,
+    .contact-card
+  ) {
+    background: rgba(12, 18, 26, 0.48) !important;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-sections :is(
+    .skill-card,
+    .project-card,
+    .experience-card,
+    .achievement-card,
+    .about-card,
+    .contact-card
+  ) {
+    transition: none;
+    transform: none !important;
+  }
+}
+
+
+/* =====================================
+   BATMAN GLASS CARDS — LESS BLUR
+===================================== */
+
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card
+) {
+  /* More transparent background */
+  background: rgba(8, 14, 22, 0.12) !important;
+
+  /* Reduce blur */
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+
+  /* Subtle border */
+  border: 1px solid rgba(230, 185, 63, 0.22);
+
+  /* Reduced shadow */
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Less cloudy appearance on hover */
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card
+):hover {
+  background: rgba(12, 19, 27, 0.18) !important;
+
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+
+  border-color: rgba(230, 185, 63, 0.5);
+}
+
+/* Shared video must stay behind the sections */
+.cinematic-sections {
+  position: relative;
+  isolation: isolate;
+}
+
+.sections-video-layer {
+  z-index: 0;
+}
+
+.cinematic-sections > section {
+  position: relative;
+  z-index: 1;
+}
+
+/* Footer must not be covered by video */
+footer,
+.footer {
+  position: relative;
+  z-index: 5;
+}

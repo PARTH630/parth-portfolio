@@ -1,0 +1,118 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+/* ==================================
+   GOTHAM PROTOCOL - GLOBAL THEME
+================================== */
+
+:root {
+  font-family: 'Inter', sans-serif;
+
+  color: #d9dce1;
+  background: #090a0c;
+
+  --gotham-black: #090a0c;
+  --gotham-dark: #111317;
+  --gotham-card: #191c21;
+  --gotham-border: #30353d;
+
+  --bat-gold: #e6b93f;
+  --bat-gold-soft: rgba(230, 185, 63, 0.12);
+
+  --text-primary: #f1f1f1;
+  --text-secondary: #a0a5ae;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+}
+
+/* Reset */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #0b0b0d;
+  color: #f5f5f5;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Selection */
+
+::selection {
+  background: var(--bat-gold);
+  color: #090a0c;
+}
+
+/* Links and buttons */
+
+button,
+a {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Scrollbar - Gotham style */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090a0c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #343941;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bat-gold);
+}
+
+/* Section positioning */
+
+section[id] {
+  scroll-margin-top: 90px;
+}
+
+/* Smooth image rendering */
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Consistent headings */
+
+h1,
+h2,
+h3 {
+  font-family: 'Poppins', sans-serif;
+}

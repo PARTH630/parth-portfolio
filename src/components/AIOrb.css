@@ -1,0 +1,685 @@
+
+/* ==========================================
+   PARTH.AI — BATCOMPUTER ENERGY ORB
+   Clean cinematic animation stylesheet
+========================================== */
+
+.ai-orb {
+  --orb-size: 118px;
+  --orb-cyan: #6be3ff;
+  --orb-gold: #e6b93f;
+
+  position: relative;
+  width: var(--orb-size);
+  height: var(--orb-size);
+  flex-shrink: 0;
+  overflow: visible;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  filter: drop-shadow(
+    0 0 12px rgba(36, 191, 255, 0.3)
+  );
+}
+
+/* ==========================================
+   ENERGY HALO
+========================================== */
+
+.ai-orb-halo {
+  position: absolute;
+  inset: -38%;
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle,
+    rgba(35, 204, 255, 0.3),
+    rgba(35, 204, 255, 0.08) 42%,
+    transparent 70%
+  );
+
+  animation: orb-breathe 3.5s ease-in-out infinite;
+}
+
+/* ==========================================
+   ROTATING ENERGY RINGS
+========================================== */
+
+.ai-orb-ring {
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  border: 1px solid rgba(107, 227, 255, 0.65);
+  will-change: transform;
+}
+
+.ai-orb-ring-one {
+  border-style: dashed;
+  animation: orb-spin 12s linear infinite;
+}
+
+.ai-orb-ring-two {
+  inset: 20% -17%;
+  border-color: rgba(230, 185, 63, 0.85);
+  animation: orb-gold-rotate 9s ease-in-out infinite alternate;
+}
+
+.ai-orb-ring-three {
+  inset: -13% 24%;
+  border-color: rgba(107, 227, 255, 0.55);
+  animation: orb-blue-rotate 13s linear infinite;
+}
+
+/* ==========================================
+   MAIN ENERGY CORE
+========================================== */
+
+.ai-orb-core {
+  position: absolute;
+  inset: 23%;
+  z-index: 5;
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle at 34% 28%,
+    #ffffff 0%,
+    #b5f6ff 13%,
+    #32cfff 35%,
+    #08618b 68%,
+    #041321 100%
+  );
+
+  border: 1px solid rgba(175, 245, 255, 0.9);
+
+  box-shadow:
+    0 0 15px rgba(67, 211, 255, 0.85),
+    0 0 40px rgba(22, 174, 247, 0.32),
+    inset -8px -10px 16px rgba(0, 9, 25, 0.55);
+
+  animation: orb-core-pulse 3.5s ease-in-out infinite;
+}
+
+.ai-orb-core-inner {
+  position: absolute;
+  inset: 27%;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.35);
+}
+
+/* ==========================================
+   GOLD ENERGY SPARKS
+========================================== */
+
+.ai-orb-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orb-gold);
+  box-shadow: 0 0 10px var(--orb-gold);
+
+  animation: orb-spark-float 4s ease-in-out infinite;
+}
+
+.spark-one {
+  left: 3%;
+  top: 17%;
+}
+
+.spark-two {
+  right: -4%;
+  top: 57%;
+  animation-delay: -1s;
+}
+
+.spark-three {
+  left: 20%;
+  bottom: -7%;
+  animation-delay: -2s;
+}
+
+.spark-four {
+  right: 16%;
+  top: -8%;
+  animation-delay: -3s;
+}
+
+/* ==========================================
+   ENERGY PARTICLE TRAIL
+========================================== */
+
+.ai-orb-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ai-orb-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+
+  background: #6be3ff;
+  box-shadow:
+    0 0 7px #6be3ff,
+    0 0 14px rgba(70, 210, 255, 0.7);
+
+  opacity: 0;
+
+  animation: particle-trail 1.6s ease-out infinite;
+  animation-delay:
+    calc(var(--particle-index) * -0.1s);
+}
+
+.ai-orb-particle:nth-child(4n) {
+  background: #e6b93f;
+  box-shadow:
+    0 0 8px #e6b93f,
+    0 0 16px rgba(230, 185, 63, 0.6);
+}
+
+.ai-orb-particle:nth-child(3n) {
+  width: 2px;
+  height: 2px;
+}
+
+.ai-orb-particle:nth-child(4n + 1) {
+  --trail-y: -35px;
+}
+
+.ai-orb-particle:nth-child(4n + 2) {
+  --trail-y: 20px;
+}
+
+.ai-orb-particle:nth-child(4n + 3) {
+  --trail-y: -10px;
+}
+
+.ai-orb-particle:nth-child(4n + 4) {
+  --trail-y: 42px;
+}
+
+@keyframes particle-trail {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.5);
+  }
+
+  15% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate3d(-95px, var(--trail-y), 0)
+      scale(0.1);
+  }
+}
+
+/* ==========================================
+   WELCOME SCREEN ORB MOVEMENT
+========================================== */
+
+.ai-orb-welcome {
+  --orb-size: clamp(80px, 12vw, 130px);
+
+  animation: orb-welcome-travel 4.3s
+    cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+
+@keyframes orb-welcome-travel {
+  0% {
+    opacity: 0;
+    transform: translate3d(-70px, 35px, 0) scale(0.3);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate3d(-55px, -35px, 0) scale(0.9);
+  }
+
+  45% {
+    transform: translate3d(55px, -55px, 0) scale(1.05);
+  }
+
+  70% {
+    transform: translate3d(40px, 20px, 0) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* ==========================================
+   SMOOTH FLIGHT TO LOWER-RIGHT CORNER
+========================================== */
+
+.ai-orb-flight-path {
+  --flight-size: 76px;
+  --dock-right: 25px;
+  --dock-bottom: 28px;
+
+  position: fixed;
+  z-index: 100001;
+  left: calc(50% - 38px);
+  top: calc(50dvh - 190px);
+
+  width: var(--flight-size);
+  height: var(--flight-size);
+
+  pointer-events: none;
+  will-change: transform;
+
+  animation: ai-smooth-flight 1.8s
+    cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ai-orb-flight {
+  --orb-size: 76px;
+  width: 76px;
+  height: 76px;
+}
+
+@keyframes ai-smooth-flight {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.65);
+  }
+
+  30% {
+    transform:
+      translate3d(10vw, -8vh, 0)
+      scale(1.35);
+  }
+
+  60% {
+    transform:
+      translate3d(26vw, 12vh, 0)
+      scale(1.12);
+  }
+
+  85% {
+    transform:
+      translate3d(
+        calc(50vw - 38px - var(--dock-right)),
+        calc(50dvh + 86px - var(--dock-bottom)),
+        0
+      )
+      scale(1.02);
+  }
+
+  100% {
+    transform:
+      translate3d(
+        calc(50vw - 38px - var(--dock-right)),
+        calc(50dvh + 86px - var(--dock-bottom)),
+        0
+      )
+      scale(1);
+  }
+}
+
+/* Stronger particle emission during flight */
+.ai-orb-flight .ai-orb-particle {
+  width: 3px;
+  height: 3px;
+  animation-duration: 1.25s;
+}
+
+.ai-orb-flight .ai-orb-particle:nth-child(4n + 1) {
+  --trail-y: -60px;
+}
+
+.ai-orb-flight .ai-orb-particle:nth-child(4n + 2) {
+  --trail-y: -30px;
+}
+
+.ai-orb-flight .ai-orb-particle:nth-child(4n + 3) {
+  --trail-y: -85px;
+}
+
+.ai-orb-flight .ai-orb-particle:nth-child(4n + 4) {
+  --trail-y: 10px;
+}
+
+/* ==========================================
+   DOCKED FLOATING ORB
+========================================== */
+
+.ai-orb-dock {
+  --orb-size: 76px;
+
+  position: fixed;
+  right: 25px;
+  bottom: 28px;
+  z-index: 9998;
+
+  width: var(--orb-size);
+  height: var(--orb-size);
+
+  cursor: pointer;
+  pointer-events: auto;
+
+  animation: ai-dock-hover 4s ease-in-out infinite;
+}
+
+@keyframes ai-dock-hover {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -5px, 0);
+  }
+}
+
+/* Slightly smaller docked particles */
+.ai-orb-dock .ai-orb-particle {
+  width: 2px;
+  height: 2px;
+  opacity: 0.5;
+}
+
+/* ==========================================
+   ORB ENERGY ANIMATIONS
+========================================== */
+
+@keyframes orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orb-gold-rotate {
+  from {
+    transform: rotate(-35deg);
+  }
+
+  to {
+    transform: rotate(35deg);
+  }
+}
+
+@keyframes orb-blue-rotate {
+  from {
+    transform: rotate(35deg);
+  }
+
+  to {
+    transform: rotate(395deg);
+  }
+}
+
+@keyframes orb-breathe {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes orb-core-pulse {
+  0%, 100% {
+    filter: brightness(0.9);
+  }
+
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+@keyframes orb-spark-float {
+  0%, 100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-14px);
+  }
+}
+
+/* ==========================================
+   MOBILE RESPONSIVENESS
+========================================== */
+
+@media (max-width: 768px) {
+  .ai-orb-flight-path {
+    --flight-size: 64px;
+    --dock-right: 14px;
+    --dock-bottom: 18px;
+
+    left: calc(50% - 32px);
+    top: calc(50dvh - 170px);
+  }
+
+  .ai-orb-flight {
+    --orb-size: 64px;
+    width: 64px;
+    height: 64px;
+  }
+
+  .ai-orb-dock {
+    --orb-size: 64px;
+    right: 14px;
+    bottom: 18px;
+  }
+
+  @keyframes ai-smooth-flight {
+    0% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1.6);
+    }
+
+    40% {
+      transform:
+        translate3d(12vw, -7vh, 0)
+        scale(1.2);
+    }
+
+    100% {
+      transform:
+        translate3d(
+          calc(50vw - 32px - var(--dock-right)),
+          calc(50dvh + 106px - var(--dock-bottom)),
+          0
+        )
+        scale(1);
+    }
+  }
+}
+
+/* ==========================================
+   REDUCED MOTION ACCESSIBILITY
+========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-orb,
+  .ai-orb *,
+  .ai-orb-flight-path,
+  .ai-orb-dock {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ai-orb-particle {
+    opacity: 0;
+  }
+}
+
+
+/* Docked orb is now a clickable button */
+button.ai-orb-dock {
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Keyboard focus */
+button.ai-orb-dock:focus-visible {
+  outline: 2px solid #e6b93f;
+  outline-offset: 7px;
+  border-radius: 50%;
+}
+
+/* Brighten the energy core when chatbot opens */
+.ai-orb-chat-active .ai-orb-core {
+  box-shadow:
+    0 0 22px rgba(92, 220, 255, 0.95),
+    0 0 55px rgba(22, 174, 247, 0.5),
+    inset -8px -10px 16px rgba(0, 9, 25, 0.55);
+}
+
+/* Orb remains above ordinary page content */
+.ai-orb-dock {
+  z-index: 10002;
+}
+
+
+/* ==========================================
+   PARTH.AI — FLOATING GREETING POPUP
+========================================== */
+
+.ai-chat-hint {
+  position: fixed;
+  right: 115px;
+  bottom: 40px;
+  z-index: 10001;
+
+  width: 230px;
+  padding: 14px 16px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+
+  background: rgba(12, 22, 33, 0.96);
+  backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(107, 227, 255, 0.35);
+  border-radius: 16px;
+
+  color: #edf6fa;
+  text-align: left;
+
+  box-shadow:
+    0 12px 38px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(61, 201, 255, 0.12);
+
+  cursor: pointer;
+
+  animation: ai-hint-appear 0.55s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ai-chat-hint::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  bottom: 22px;
+
+  width: 11px;
+  height: 11px;
+
+  transform: rotate(45deg);
+
+  background: #0c1621;
+
+  border-top: 1px solid rgba(107, 227, 255, 0.35);
+  border-right: 1px solid rgba(107, 227, 255, 0.35);
+}
+
+.ai-chat-hint-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #76dfff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.ai-chat-hint-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+
+  background: #69e6b3;
+  box-shadow: 0 0 9px #69e6b3;
+}
+
+.ai-chat-hint-message {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ai-chat-hint-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e6b93f;
+}
+
+.ai-chat-hint:hover {
+  border-color: #6be3ff;
+  box-shadow:
+    0 14px 42px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(61, 201, 255, 0.2);
+}
+
+.ai-chat-hint:focus-visible {
+  outline: 2px solid #e6b93f;
+  outline-offset: 4px;
+}
+
+@keyframes ai-hint-appear {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .ai-chat-hint {
+    right: 90px;
+    bottom: 26px;
+    width: min(220px, calc(100vw - 110px));
+    padding: 12px;
+  }
+
+  .ai-chat-hint-message {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-hint {
+    animation: none;
+  }
+}

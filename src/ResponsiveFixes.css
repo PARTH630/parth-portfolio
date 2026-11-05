@@ -1,0 +1,355 @@
+
+/* =========================================
+   BATMAN PORTFOLIO — RESPONSIVE FIXES
+========================================= */
+
+/* Prevent width and padding overflow */
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  margin: 0;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+main {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Allow flex/grid children to shrink */
+.hero-content,
+.hero-visual,
+.cinematic-sections,
+.cinematic-sections > section,
+.section,
+.section-container,
+.projects-grid,
+.skills-grid,
+.contact-grid {
+  min-width: 0;
+}
+
+/* =========================================
+   FLOATING NAVBAR
+========================================= */
+
+.navbar {
+  position: fixed !important;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), 1500px);
+  max-width: 1500px;
+  margin: 0;
+  z-index: 1000;
+}
+
+.nav-links {
+  min-width: 0;
+}
+
+/* =========================================
+   HERO
+========================================= */
+
+.hero {
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  padding:
+    145px max(24px, calc((100% - 1200px) / 2))
+    80px;
+}
+
+.hero-content {
+  min-width: 0;
+}
+
+.hero h1 {
+  overflow-wrap: normal;
+}
+
+.hero-visual {
+  min-width: 0;
+}
+
+/* =========================================
+   SHARED SECTION LAYOUT
+========================================= */
+
+.cinematic-sections {
+  width: 100%;
+}
+
+.cinematic-sections > section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: max(24px, calc((100% - 1200px) / 2));
+  padding-right: max(24px, calc((100% - 1200px) / 2));
+}
+
+/* Images cannot overflow cards */
+.cinematic-sections img {
+  max-width: 100%;
+}
+
+/* Responsive glass cards */
+.cinematic-sections :is(
+  .skill-card,
+  .project-card,
+  .experience-card,
+  .achievement-card,
+  .about-card,
+  .contact-card,
+  .info-card
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* =========================================
+   TABLETS
+========================================= */
+
+@media (max-width: 1100px) {
+  .nav-links {
+    gap: 12px;
+  }
+
+  .nav-links button {
+    font-size: 12px;
+  }
+
+  .hero {
+    gap: 28px;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .hero h1 {
+    font-size: clamp(36px, 4.5vw, 60px);
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 768px) {
+
+  /* Floating navbar */
+  .navbar {
+    top: 10px !important;
+    left: 50% !important;
+    width: calc(100% - 20px) !important;
+    padding: 12px 18px !important;
+    min-height: 62px;
+    border-radius: 20px !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .logo {
+    font-size: 23px;
+  }
+
+  .nav-contact {
+    display: none !important;
+  }
+
+  .menu-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    z-index: 1002;
+  }
+
+  /* Mobile dropdown */
+  .nav-links {
+    display: none !important;
+    position: absolute !important;
+    top: calc(100% + 10px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-height: calc(100dvh - 95px);
+    overflow-y: auto;
+    padding: 18px !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    border: 1px solid rgba(230,185,63,.35);
+    border-radius: 18px;
+    background: rgba(9,13,19,.96) !important;
+    backdrop-filter: blur(18px);
+  }
+
+  .nav-links.active {
+    display: flex !important;
+  }
+
+  .nav-links button {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    text-align: left;
+  }
+
+  /* Hero starts below navbar */
+  .hero {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    min-height: 100svh;
+    padding: 118px 20px 60px !important;
+  }
+
+  .hero-content {
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: clamp(30px, 8vw, 44px);
+    line-height: 1.16;
+    margin-top: 20px;
+    overflow-wrap: break-word;
+  }
+
+  .hero-description {
+    font-size: 15px;
+    line-height: 1.8;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-buttons,
+  .social-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .hero-visual {
+    width: 100%;
+    max-width: 510px;
+    margin: 0 auto;
+  }
+
+  /* All remaining sections */
+  .cinematic-sections > section {
+    padding: 85px 20px 65px !important;
+  }
+
+  .skills-grid,
+  .projects-grid,
+  .achievements-grid,
+  .experience-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* About and Contact stack vertically */
+  .about-grid,
+  .contact-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 20px;
+  }
+
+  /* Avoid forcing 3D tilt on touchscreens */
+  .cinematic-sections :is(
+    .skill-card,
+    .project-card,
+    .experience-card,
+    .achievement-card,
+    .about-card,
+    .contact-card
+  ):hover {
+    transform: none;
+  }
+}
+
+/* =========================================
+   SMALL PHONES
+========================================= */
+
+@media (max-width: 520px) {
+
+  .hero {
+    padding-top: 112px !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(28px, 8vw, 38px);
+  }
+
+  .availability {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .hero-buttons a {
+    max-width: 100%;
+  }
+
+  .cinematic-sections > section {
+    padding: 72px 16px 55px !important;
+  }
+
+  .skills-grid,
+  .projects-grid,
+  .achievements-grid,
+  .experience-grid,
+  .contact-grid,
+  .about-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .cinematic-sections :is(
+    .skill-card,
+    .project-card,
+    .experience-card,
+    .achievement-card,
+    .about-card,
+    .contact-card
+  ) {
+    width: 100%;
+  }
+
+  /* Hologram stays inside mobile viewport */
+  .hologram-profile {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .holo-scene {
+    max-width: 100%;
+  }
+
+  .holo-data {
+    max-width: 42%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

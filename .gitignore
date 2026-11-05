@@ -1,0 +1,28 @@
+
+# Node
+node_modules/
+dist/
+
+# Python
+.venv/
+.venv-rag/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local databases
+backend/chroma_db/
+backend/chroma_db_backup/
+
+# Local testing
+backend/benchmark_embeddings.py
+backend/profile_model.py
+backend/test_warm_load.py
+
+# Editor and OS
+.DS_Store
+Thumbs.db

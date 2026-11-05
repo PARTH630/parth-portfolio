@@ -1,0 +1,255 @@
+
+/* ==============================
+   GOTHAM - BATMAN DARK THEME
+================================ */
+
+:root {
+  --bat-black: #090a0c;
+  --bat-dark: #111317;
+  --bat-card: #191c21;
+  --bat-card-hover: #22262c;
+  --bat-border: #30353d;
+  --bat-yellow: #e6b93f;
+  --bat-silver: #d5d8dc;
+  --bat-muted: #9299a3;
+}
+
+/* Main background */
+
+html {
+  background: var(--bat-black);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bat-black);
+  color: var(--bat-silver);
+}
+
+/* Navigation */
+
+.navbar {
+  background: rgba(9, 10, 12, 0.94);
+  border-bottom: 1px solid var(--bat-border);
+  backdrop-filter: blur(16px);
+}
+
+.logo span {
+  color: var(--bat-yellow);
+}
+
+.nav-links a,
+.nav-links button {
+  color: var(--bat-muted);
+}
+
+.nav-links a:hover,
+.nav-links button:hover {
+  color: var(--bat-yellow);
+}
+
+/* Hero */
+
+.hero {
+  background:
+    radial-gradient(
+      ellipse at 75% 45%,
+      rgba(230, 185, 63, 0.07),
+      transparent 40%
+    ),
+    var(--bat-black);
+}
+
+.hero h1 {
+  color: #f1f1f1;
+}
+
+.hero h1 span {
+  color: var(--bat-yellow);
+}
+
+.hero-description {
+  color: var(--bat-muted);
+}
+
+.availability {
+  color: var(--bat-yellow);
+}
+
+/* Profile card */
+
+.profile-card {
+  background: linear-gradient(
+    145deg,
+    #22262c,
+    #111317
+  );
+  border: 1px solid var(--bat-border);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+}
+
+.profile-card h2 {
+  color: white;
+}
+
+.profile-info span {
+  color: var(--bat-muted);
+}
+
+.profile-info strong {
+  color: var(--bat-silver);
+}
+
+.profile-avatar {
+  border-color: var(--bat-yellow);
+}
+
+/* Buttons */
+
+.primary-btn {
+  background: var(--bat-yellow);
+  color: #101010;
+  border: 1px solid var(--bat-yellow);
+}
+
+.primary-btn:hover {
+  background: #f3ca61;
+  color: #090a0c;
+}
+
+.resume-button {
+  background: transparent;
+  color: var(--bat-silver);
+  border: 1px solid var(--bat-border);
+}
+
+.resume-button:hover {
+  background: var(--bat-yellow);
+  color: #090a0c;
+}
+
+/* All main sections */
+
+.section {
+  background: var(--bat-black);
+}
+
+.section-heading h2 {
+  color: #f1f1f1;
+}
+
+.section-heading h2 span,
+.section-label {
+  color: var(--bat-yellow);
+}
+
+.section-heading p {
+  color: var(--bat-muted);
+}
+
+/* Cards */
+
+.skill-card,
+.project-card,
+.experience-card,
+.achievement-card,
+.detail-card,
+.contact-card {
+  background: var(--bat-card);
+  border: 1px solid var(--bat-border);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.skill-card:hover,
+.project-card:hover,
+.experience-card:hover,
+.achievement-card:hover,
+.detail-card:hover {
+  background: var(--bat-card-hover);
+  border-color: rgba(230, 185, 63, 0.5);
+  transform: translateY(-5px);
+}
+
+/* Card headings */
+
+.skill-card h3,
+.project-card h3,
+.experience-card h3,
+.achievement-card h3,
+.detail-card h3,
+.contact-card h3 {
+  color: #f1f1f1;
+}
+
+/* Card descriptions */
+
+.skill-card p,
+.project-card p,
+.experience-card p,
+.achievement-card p,
+.detail-card p,
+.contact-card p {
+  color: var(--bat-muted);
+}
+
+/* Tags */
+
+.skill-tags span,
+.profile-tags span {
+  background: #292d33;
+  color: var(--bat-silver);
+  border: 1px solid #393f47;
+}
+
+/* Project highlights */
+
+.project-result {
+  color: var(--bat-yellow);
+}
+
+/* Icons */
+
+.project-folder,
+.achievement-icon {
+  color: var(--bat-yellow);
+}
+
+/* Contact */
+
+.contact-email,
+.contact-socials a {
+  color: var(--bat-yellow);
+}
+
+.contact-socials a:hover {
+  color: white;
+}
+
+/* Footer */
+
+.footer {
+  background: #070809;
+  border-top: 1px solid var(--bat-border);
+}
+
+.footer-logo span {
+  color: var(--bat-yellow);
+}
+
+.footer h3 {
+  color: white;
+}
+
+.footer p,
+.footer a {
+  color: var(--bat-muted);
+}
+
+.footer a:hover {
+  color: var(--bat-yellow);
+}
+
+.footer-bottom {
+  border-top: 1px solid var(--bat-border);
+}
