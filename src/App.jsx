@@ -153,7 +153,7 @@ function App() {
               preload="metadata"
             >
               <source
-                src="/videos/batcave-bg.mp4"
+                src={`${import.meta.env.BASE_URL}videos/batcave-bg.mp4`}
                 type="video/mp4"
               />
             </video>
