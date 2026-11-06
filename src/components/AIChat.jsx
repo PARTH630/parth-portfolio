@@ -539,20 +539,12 @@ export default function AIChat({ isOpen, onClose }) {
 
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    skipHtml
                     components={{
-                      table: ({ node, ...props }) => (
-                        <div className="ai-chat-table-scroll">
-                          <table {...props} />
+                      table: ({ children, ...props }) => (
+                        <div className="ai-table-scroll">
+                          <table {...props}>{children}</table>
                         </div>
                       ),
-                      a: ({ node, ...props }) => (
-                        <a
-                          {...props}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        />
-                      )
                     }}
                   >
                     {message.content}

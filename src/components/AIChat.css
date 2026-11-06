@@ -638,3 +638,49 @@
   overflow-wrap: anywhere;
 }
 
+/* PARTH.AI — Readable chatbot tables */
+
+.ai-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px 0;
+  border-radius: 10px;
+}
+
+.ai-table-scroll table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+
+.ai-table-scroll th,
+.ai-table-scroll td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 120px;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ai-table-scroll th {
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 600px) {
+  .ai-table-scroll table {
+    min-width: 560px;
+  }
+
+  .ai-table-scroll th,
+  .ai-table-scroll td {
+    font-size: 13px;
+    padding: 10px;
+  }
+}
