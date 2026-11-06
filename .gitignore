@@ -5,9 +5,10 @@ dist/
 
 # Python
 .venv/
+.venv313/
 .venv-rag/
+.env
 __pycache__/
-*.pyc
 
 # Secrets
 .env
