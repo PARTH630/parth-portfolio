@@ -164,7 +164,7 @@ def is_general_project_query(query):
     # academic projects, individual projects, etc.
     specific_topics = [
         "academic projects",
-        "college projects",
+        "servicenow projects",
         "vendor performance projects",
         "rainfall prediction projects",
     ]
