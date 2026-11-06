@@ -22,21 +22,29 @@ function Hero() {
 
       {/* Gotham background video */}
       <div className="hero-background" aria-hidden="true">
+        
+        
         <video
           className="hero-video"
+          src={backgroundVideo}
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
-        >
-          <source
-            src={backgroundVideo}
-            type="video/mp4"
-          />
-
-          Your browser does not support HTML5 video.
-        </video>
+          onLoadedData={(e) => {
+            console.log("Gotham video loaded");
+            e.currentTarget.play().catch((error) => {
+              console.warn("Video autoplay blocked:", error);
+            });
+          }}
+          onError={(e) => {
+            console.error(
+              "Gotham video failed:",
+              e.currentTarget.error
+            );
+          }}
+        />
 
         <div className="hero-overlay"></div>
         <div className="hero-light"></div>
