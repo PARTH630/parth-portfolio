@@ -146,28 +146,51 @@ def load_all_projects(vectorstore):
 # HELPER — DETECT GENERAL PROJECT QUESTIONS
 # ==========================================
 
+
 def is_general_project_query(query):
     """
-    Detect requests asking for a list or overview
-    of portfolio projects rather than one project.
+    Detect broad requests for a list or overview
+    of Parth's portfolio projects.
     """
 
-    patterns = [
-        r"\ball (?:of )?(?:his |her |your |parth'?s )?projects\b",
-        r"\blist (?:of )?(?:his |her |your |parth'?s )?projects\b",
-        r"\bshow (?:me )?(?:all )?(?:his |her |your |parth'?s )?projects\b",
-        r"\bwhat (?:are |were )?(?:his |her |your |parth'?s )?projects\b",
-        r"\bwhich projects\b",
-        r"\bportfolio projects\b",
-        r"\bprojects (?:has |have )(?:he |you |parth)\b",
-        r"\btell me about (?:his |her |your |parth'?s )?projects\b",
-        r"\bproject list\b",
-        r"\bproject overview\b",
+    query = query.lower().strip()
+
+    # A general project request should mention
+    # projects in plural.
+    if not re.search(r"\bprojects\b", query):
+        return False
+
+    # Exclude requests specifically focused on
+    # academic projects, individual projects, etc.
+    specific_topics = [
+        "academic projects",
+        "college projects",
+        "vendor performance projects",
+        "rainfall prediction projects",
+    ]
+
+    if any(topic in query for topic in specific_topics):
+        return False
+
+    # Recognize different ways of asking for
+    # a complete portfolio project list.
+    general_intents = [
+        "show",
+        "list",
+        "all",
+        "what",
+        "which",
+        "tell me",
+        "overview",
+        "portfolio",
+        "describe",
+        "explain his projects",
+        "explain your projects",
     ]
 
     return any(
-        re.search(pattern, query)
-        for pattern in patterns
+        intent in query
+        for intent in general_intents
     )
 
 
