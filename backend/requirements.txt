@@ -1,10 +1,4 @@
 fastapi
 uvicorn
-langchain
-langchain-text-splitters
-langchain-huggingface
-sentence-transformers
-langchain-chroma
-watchdog
-langchain-groq
+groq
 python-dotenv
