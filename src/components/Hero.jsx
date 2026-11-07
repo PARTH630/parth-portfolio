@@ -63,15 +63,15 @@ function Hero() {
           <br />
           I build intelligent
           <br />
-          solutions with data.
+          solutions with data & AI.
         </h1>
 
         <p className="hero-description">
-          I'm a Data Science and AI enthusiast with a background
-          in Metallurgical and Materials Engineering from MNIT Jaipur.
-          I enjoy transforming raw data into meaningful insights and
-          building intelligent applications using machine learning
-          and Generative AI.
+          I'm passionate about AI Engineering and Data Science, 
+          with a background in Metallurgical and Materials Engineering from MNIT Jaipur. 
+          I enjoy transforming raw data into actionable insights, 
+          developing machine learning models, and building intelligent, 
+          real-world applications using Generative AI, LLMs, and modern AI technologies.
         </p>
 
         {/* Action buttons */}
