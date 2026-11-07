@@ -715,3 +715,13 @@
     transition: none;
   }
 }
+
+/* Keep "solutions with data & AI." on the same line */
+
+.hero-headline-last {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.78em;
+  letter-spacing: -0.045em;
+  color: #ffffff !important;
+}
