@@ -91,74 +91,83 @@ OUT_OF_SCOPE_REPLY = (
 # incidental keywords in the Markdown files. It is not a security boundary against
 # every possible adversarial prompt.
 def is_portfolio_question(question: str, history: list[ChatMessage] | None = None) -> bool:
-    q = re.sub(r"\s+", " ", question.lower()).strip()
+    """Default-deny scope control: allow only Parth's portfolio-related requests.
 
-    # Allow the most basic onboarding prompts.
+    This is deliberately a deterministic router, not a general-purpose prompt
+    classifier. Generic math, coding, dates and conceptual questions never reach
+    Groq, even when a portfolio skill word appears in the question.
+    """
+    q = re.sub(r"\s+", " ", question.casefold()).strip()
+    if not q:
+        return False
+
+    # 1) Reject unrelated general-purpose requests before testing for portfolio
+    # relevance. Apply to the whole question, including requests that mention Parth.
+    deny_patterns = [
+        r"\b(today|tomorrow|yesterday|date|time|day of (the )?week|weather|temperature|forecast)\b",
+        r"\b(fibonacci|factorial|prime numbers?|leetcode|algorithm for|sort an array|reverse a string|recipe|joke|poem|story)\b",
+        r"\b(write|generate|provide|create|give|show|make|implement)\b.{0,100}\b(code|script|program|function|algorithm)\b",
+        r"\b(code|script|program|function|algorithm)\b.{0,100}\b(for|to|that)\b",
+        r"\b(solve|calculate|compute|evaluate|simplify|multiply|divide|add|subtract)\b",
+        r"\d\s*[-+*/=×÷]\s*\d",
+        r"\b(capital of|president of|who won|latest news|stock price|exchange rate|currency conversion)\b",
+        r"\b(ignore (all )?(previous|above) instructions|system prompt|developer instructions)\b",
+    ]
+    if any(re.search(pattern, q) for pattern in deny_patterns):
+        return False
+
+    # 2) Small talk about the assistant is permitted, but not a general Q&A.
     if re.fullmatch(r"(hi|hello|hey|good (morning|afternoon|evening)|who are you|what can you do)[!?. ]*", q):
         return True
 
-    # Reject obvious non-portfolio requests even when they mention a portfolio term.
-    reject_patterns = [
-        r"\b(today'?s date|current date|what day is it|current time|time now)\b",
-        r"\b(fibonacci|factorial|leetcode|sort an array|reverse a string)\b",
-        r"\b(write|generate|provide|give me|show me)\b.{0,45}\b(code|script|program|function|algorithm)\b",
-        r"\b(solve|calculate|compute|evaluate)\b.{0,50}\b(math|equation|integral|derivative)\b",
-        r"\b(what is|what's|how much is)\s+\d+\s*[+*/=-]\s*\d+",
-        r"^\s*\d+\s*[+*/=-]\s*\d+",
-        r"\b(teach me|tutorial|how to code|how do i code|give me a recipe)\b",
-        r"\b(ignore (all )?(previous|above) instructions|system prompt|developer instructions)\b",
-    ]
-    if any(re.search(pattern, q) for pattern in reject_patterns):
+    # 3) Allow only documented portfolio subjects. A named project can be asked
+    # about without saying 'Parth', e.g. 'Explain Vendor Performance Analysis'.
+    portfolio_subject = re.search(
+        r"\b(projects?|portfolio|skills?|experience|internships?|education|"
+        r"degrees?|college|university|certifications?|certificates?|achievements?|"
+        r"awards?|resume|cv|career|professional background|research|publications?|"
+        r"work history|job role|employment|hcltech|contact|github|linkedin|"
+        r"technical stack|tech stack|technologies used)\b", q
+    )
+    parth_reference = re.search(
+        r"\b(parth(?: patkar)?|parth\.ai|his|him|he)\b", q
+    )
+    personal_question = re.search(
+        r"\b(who is|tell me about|introduce|about)\b", q
+    )
+
+    # General technology questions are unrelated even if a technology is in
+    # Parth's skillset. Questions about his actual use of a technology remain OK.
+    generic_tech = re.search(
+        r"\b(what is|what's|define|teach me|how to|how do i|can you explain|explain)\b.{0,80}"
+        r"\b(python|sql|machine learning|ai|fastapi|langchain|langgraph|react|numpy|pandas|rest api|neural network)\b",
+        q,
+    )
+    if generic_tech and not (parth_reference or portfolio_subject):
         return False
 
-    # Direct personal/portfolio references, including common pronouns, must be about
-    # a relevant professional topic. Avoid accepting general questions like
-    # 'Parth, what is the capital of France?'.
-    portfolio_topics = re.compile(
-        r"\b(projects?|portfolio|skill(?:s|set)?|tech(?:nical|nologies| stack)?|"
-        r"experience|work|job|role|hcltech|internship|education|degree|college|"
-        r"university|certifications?|achievements?|awards?|resume|cv|career|"
-        r"professional|background|research|publication|training|employer|"
-        r"tools?|frameworks?|languages?|contact|github|linkedin|"
-        r"machine learning|data science|ai|sql|python|power bi|tableau|"
-        r"fastapi|langchain|langgraph|azure|groq)\b"
-    )
-    personal_reference = re.search(
-        r"\b(parth(?: patkar)?|parth\.ai|his|him|he|your|you|their)\b", q
-    )
-    if portfolio_topics.search(q):
-        # Standalone portfolio headings / short searches are reasonable.
-        if personal_reference or re.search(
-            r"\b(projects?|portfolio|skills?|experience|education|"
-            r"achievements?|certifications?|resume|internships?)\b", q
-        ):
-            # Generic instructional questions still aren't about Parth.
-            if re.search(r"\b(how (to|do i|can i)|explain (the|what)|what is|what are)\b", q) \
-                    and not personal_reference \
-                    and not re.search(r"\b(projects?|portfolio|skills?|experience|education|"
-                                      r"achievements?|certifications?|resume)\b", q):
-                return False
-            return True
+    if portfolio_subject:
+        return True
+    if parth_reference and personal_question:
+        return True
 
-    # Named project lookup from committed Markdown filenames, e.g. 'vendor analysis'.
-    words = tokens(q)
-    if len(words) >= 2:
+    # 4) Allow documented named project lookups, e.g. 'Vendor Analysis'.
+    query_words = tokens(q)
+    if len(query_words) >= 2:
         for path in all_markdown_files():
             if "projects" not in path.relative_to(DATA_DIR).parts:
                 continue
-            name_words = tokens(path.stem.replace("_", " ").replace("-", " "))
-            if len(name_words & words) >= 2:
+            file_words = tokens(path.stem.replace("_", " ").replace("-", " "))
+            if len(file_words & query_words) >= 2:
                 return True
 
-    # Short contextual follow-ups: accept only when the immediately previous user
-    # question itself passed the subject filter, and exclude obvious off-topic asks.
-    followup = re.fullmatch(
+    # 5) Restrict follow-ups to earlier on-topic questions.
+    if history and re.fullmatch(
         r"(tell me more|explain more|more details|what about (that|it|his|the project)|"
         r"which tools(?: did he use)?|what technologies(?: did he use)?|"
         r"what were the results|can you elaborate)[!?. ]*", q
-    )
-    if followup and history:
-        prior = next((m.content for m in reversed(history) if m.role == "user"), None)
+    ):
+        prior = next((msg.content for msg in reversed(history) if msg.role == "user"), None)
         return bool(prior and is_portfolio_question(prior, []))
 
     return False
