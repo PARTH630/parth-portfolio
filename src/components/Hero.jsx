@@ -63,7 +63,9 @@ function Hero() {
           <br />
           I build intelligent
           <br />
-          solutions with data & AI.
+          <span className="hero-headline-last">
+            solutions with data &amp; AI.
+          </span>
         </h1>
 
         <p className="hero-description">
