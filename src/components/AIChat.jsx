@@ -1,432 +1,321 @@
-
-import { useState, useEffect, useRef } from 'react';
-
-import {
-  X,
-  Send,
-  Sparkles,
-  RotateCcw,
-  AlertCircle
-} from 'lucide-react';
-
+import { useEffect, useRef, useState } from 'react';
+import { X, Send, Sparkles, RotateCcw, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
 import './AIChat.css';
 
-
-// ==========================================
-// BACKEND CONFIGURATION
-// ==========================================
-
+// Set VITE_API_URL in .env.local for local development and in GitHub
+// Actions variables for the deployed website.
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  'http://127.0.0.1:8000'
+  'https://parth-portfolio-r152.onrender.com'
 ).replace(/\/$/, '');
 
-
-// ==========================================
-// INITIAL CHAT MESSAGE
-// ==========================================
+const HEALTH_ATTEMPTS = 5;
+const HEALTH_TIMEOUT_MS = 30000;
+const HEALTH_RETRY_DELAY_MS = 5000;
+const STREAM_IDLE_TIMEOUT_MS = 90000;
 
 const welcomeMessage = {
   id: 1,
   role: 'assistant',
   content:
-    "Welcome! I'm PARTH.AI, Parth Patkar's AI portfolio assistant. Ask me about his projects, skills, education, or experience."
+    "Welcome! I'm PARTH.AI, Parth Patkar's AI portfolio assistant. Ask me about his projects, skills, education, or experience.",
 };
 
 const suggestions = [
   'Tell me about Parth',
   'What are his technical skills?',
   'Show me his projects',
-  'What is his professional experience?'
+  'What is his professional experience?',
 ];
 
-
-// ==========================================
-// CHATBOT COMPONENT
-// ==========================================
-
 export default function AIChat({ isOpen, onClose }) {
-
-  const [messages, setMessages] = useState([
-    welcomeMessage
-  ]);
-
+  const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streamStatus, setStreamStatus] = useState('');
   const [error, setError] = useState('');
+  const [backendStatus, setBackendStatus] = useState('waking');
+  const [wakeAttempt, setWakeAttempt] = useState(0);
 
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const controllerRef = useRef(null);
   const nextIdRef = useRef(2);
 
+  // Start the Render Free backend automatically when this component mounts.
+  // Every request has its OWN AbortController, so a timeout doesn't break
+  // all subsequent attempts. This is bounded; no paid keep-alive service.
+  useEffect(() => {
+    let cancelled = false;
+    let activeController = null;
+    let retryTimer = null;
+    let resolveDelay = null;
 
-  // ==========================================
-  // AUTOMATIC CHAT SCROLLING
-  // ==========================================
+    const waitForRetry = () =>
+      new Promise((resolve) => {
+        resolveDelay = resolve;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          resolveDelay = null;
+          resolve();
+        }, HEALTH_RETRY_DELAY_MS);
+      });
+
+    async function checkBackend() {
+      setBackendStatus('waking');
+
+      for (let attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt += 1) {
+        if (cancelled) return;
+
+        const controller = new AbortController();
+        activeController = controller;
+        const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(`${API_URL}/health`, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error(`Health check HTTP ${response.status}`);
+          if (!cancelled) setBackendStatus('ready');
+          return;
+        } catch (err) {
+          if (cancelled) return;
+          console.warn(`PARTH.AI health check ${attempt} failed:`, err);
+        } finally {
+          clearTimeout(timeoutId);
+          if (activeController === controller) activeController = null;
+        }
+
+        if (attempt < HEALTH_ATTEMPTS) await waitForRetry();
+      }
+
+      if (!cancelled) setBackendStatus('error');
+    }
+
+    checkBackend();
+
+    return () => {
+      cancelled = true;
+      activeController?.abort();
+      if (retryTimer !== null) clearTimeout(retryTimer);
+      resolveDelay?.();
+    };
+  }, [wakeAttempt]);
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    const container = messagesContainerRef.current;
-
-    if (container) {
+    if (isOpen && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
       container.scrollTop = container.scrollHeight;
     }
-
-  }, [messages, loading, streamStatus, isOpen]);
-
-
-  // ==========================================
-  // INPUT FOCUS
-  // ==========================================
+  }, [messages, loading, streamStatus, backendStatus, isOpen]);
 
   useEffect(() => {
-    if (isOpen && !loading) {
+    if (isOpen && !loading && backendStatus === 'ready') {
       inputRef.current?.focus();
     }
-  }, [isOpen, loading]);
-
-
-  // ==========================================
-  // CANCEL REQUEST WHEN CHAT CLOSES
-  // ==========================================
+  }, [isOpen, loading, backendStatus]);
 
   useEffect(() => {
-    if (!isOpen) {
-      controllerRef.current?.abort();
+    if (!isOpen && controllerRef.current) {
+      controllerRef.current.abort();
       controllerRef.current = null;
+      setLoading(false);
+      setStreamStatus('');
+      setMessages((previous) =>
+        previous
+          .filter((message) => !message.streaming || message.content.trim())
+          .map((message) => ({ ...message, streaming: false }))
+      );
     }
   }, [isOpen]);
 
-
-  // ==========================================
-  // CLEANUP WHEN COMPONENT UNMOUNTS
-  // ==========================================
-
-  useEffect(() => {
-    return () => {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-    };
-  }, []);
-
-
-  // ==========================================
-  // SEND MESSAGE — STREAMING RAG
-  // ==========================================
+  useEffect(() => () => controllerRef.current?.abort(), []);
 
   async function sendMessage(text) {
-
     const question = text.trim();
+    if (!question || loading || backendStatus !== 'ready') return;
 
-    if (!question || loading) return;
-
-    
-// ==========================================
-// STEP 9B — COLLECT CONVERSATION HISTORY
-// ==========================================
-
-// Exclude the initial welcome message.
-// Include only completed user/assistant messages.
     const conversationHistory = messages
-      .filter(message =>
-        message.id !== welcomeMessage.id &&
-        !message.streaming &&
-        message.content.trim() !== ''
+      .filter(
+        (message) =>
+          message.id !== welcomeMessage.id &&
+          !message.streaming &&
+          message.content.trim() !== ''
       )
       .slice(-10)
-      .map(message => ({
+      .map((message) => ({
         role: message.role,
-        content: message.content.slice(0, 2000)
+        content: message.content.slice(0, 2000),
       }));
 
-
-    setInput('');
-    setError('');
-    setLoading(true);
-    setStreamStatus('Connecting to PARTH.AI...');
-
-    // Show the visitor's question
     const userMessage = {
       id: nextIdRef.current++,
       role: 'user',
-      content: question
+      content: question,
     };
-
-    // Create an empty assistant message
     const assistantId = nextIdRef.current++;
-
     const assistantMessage = {
       id: assistantId,
       role: 'assistant',
       content: '',
       sources: [],
-      streaming: true
+      streaming: true,
     };
 
-    setMessages(previous => [
-      ...previous,
-      userMessage,
-      assistantMessage
-    ]);
+    setInput('');
+    setError('');
+    setLoading(true);
+    setStreamStatus('Connecting to PARTH.AI...');
+    setMessages((previous) => [...previous, userMessage, assistantMessage]);
 
     const controller = new AbortController();
     controllerRef.current = controller;
-
     let fullAnswer = '';
+    let timedOut = false;
+    let idleTimer = null;
 
-    // Add text to the current AI message
+    function resetStreamTimer() {
+      if (idleTimer !== null) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, STREAM_IDLE_TIMEOUT_MS);
+    }
+
     function appendToken(token) {
-
-      if (controllerRef.current !== controller) {
-        return;
-      }
-
+      if (controllerRef.current !== controller) return;
       fullAnswer += token;
-
-      setMessages(previous =>
-        previous.map(message =>
+      setMessages((previous) =>
+        previous.map((message) =>
           message.id === assistantId
-            ? {
-                ...message,
-                content: fullAnswer
-              }
+            ? { ...message, content: fullAnswer }
             : message
         )
       );
     }
 
     try {
+      resetStreamTimer();
+      const response = await fetch(`${API_URL}/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({ question, history: conversationHistory }),
+        signal: controller.signal,
+      });
 
-      // =====================================
-      // CONNECT TO FASTAPI STREAM
-      // =====================================
-
-      const response = await fetch(
-        `${API_URL}/chat/stream`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'text/event-stream'
-          },
-          body: JSON.stringify({
-            question,
-            history: conversationHistory
-          }),
-          signal: controller.signal
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Server returned HTTP ${response.status}`
-        );
-      }
-
-      if (!response.body) {
-        throw new Error(
-          'Streaming is not supported by this response.'
-        );
-      }
+      if (!response.ok) throw new Error(`Server returned HTTP ${response.status}`);
+      if (!response.body) throw new Error('The response does not support streaming.');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       let buffer = '';
       let completed = false;
 
-      // =====================================
-      // PROCESS ONE SSE EVENT
-      // =====================================
-
       function processEvent(eventText) {
-
         const dataLines = eventText
           .split(/\r?\n/)
-          .filter(line => line.startsWith('data:'))
-          .map(line => line.slice(5).trimStart());
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart());
+        if (!dataLines.length) return;
 
-        if (dataLines.length === 0) return;
-
-        const event = JSON.parse(
-          dataLines.join('\n')
-        );
+        let event;
+        try {
+          event = JSON.parse(dataLines.join('\n'));
+        } catch {
+          console.warn('Ignored malformed PARTH.AI SSE event');
+          return;
+        }
 
         if (event.type === 'status') {
-
           setStreamStatus(event.message || 'Thinking...');
-        
-        
         } else if (event.type === 'sources') {
-
           const sources = Array.isArray(event.files)
-            ? event.files.filter(
-                file => typeof file === 'string'
-              )
+            ? event.files.filter((file) => typeof file === 'string')
             : [];
-
-          setMessages(previous =>
-            previous.map(message =>
-              message.id === assistantId
-                ? {
-                    ...message,
-                    sources
-                  }
-                : message
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.id === assistantId ? { ...message, sources } : message
             )
           );
-
         } else if (event.type === 'token') {
-
           setStreamStatus('');
-
           appendToken(event.text || '');
-
         } else if (event.type === 'done') {
-
           completed = true;
-
         } else if (event.type === 'error') {
-
-          throw new Error(
-            event.message || 'AI generation failed.'
-          );
+          throw new Error(event.message || 'AI generation failed.');
         }
       }
 
-      // =====================================
-      // READ STREAM CHUNKS
-      // =====================================
-
-      while (true) {
-
+      while (!completed && controllerRef.current === controller) {
         const { done, value } = await reader.read();
-
-        if (controllerRef.current !== controller) {
-          break;
-        }
-
+        if (controllerRef.current !== controller) break;
         if (done) {
           buffer += decoder.decode();
           break;
         }
 
-        buffer += decoder.decode(value, {
-          stream: true
-        });
-
-        // SSE events are separated by blank lines
-        let boundary = buffer.match(/\r?\n\r?\n/);
-
-        while (boundary) {
-
-          const eventText = buffer.slice(
-            0,
-            boundary.index
-          );
-
-          buffer = buffer.slice(
-            boundary.index + boundary[0].length
-          );
-
+        resetStreamTimer();
+        buffer += decoder.decode(value, { stream: true });
+        let match = /\r?\n\r?\n/.exec(buffer);
+        while (match) {
+          const eventText = buffer.slice(0, match.index);
+          buffer = buffer.slice(match.index + match[0].length);
           processEvent(eventText);
-
           if (completed) break;
-
-          boundary = buffer.match(/\r?\n\r?\n/);
-        }
-
-        if (completed) {
-          await reader.cancel();
-          break;
+          match = /\r?\n\r?\n/.exec(buffer);
         }
       }
 
-      // Process any final complete event
-      if (
-        !completed &&
-        buffer.trim() &&
-        controllerRef.current === controller
-      ) {
+      if (!completed && buffer.trim() && controllerRef.current === controller) {
         processEvent(buffer);
       }
-
-      if (
-        controllerRef.current === controller &&
-        !completed
-      ) {
-        throw new Error(
-          'The response stream ended unexpectedly.'
-        );
+      if (completed) await reader.cancel().catch(() => {});
+      if (controllerRef.current === controller && !completed) {
+        throw new Error('The response stream ended unexpectedly.');
       }
-
-      if (
-        controllerRef.current === controller &&
-        !fullAnswer.trim()
-      ) {
-        throw new Error(
-          'PARTH.AI returned an empty response.'
-        );
+      if (controllerRef.current === controller && !fullAnswer.trim()) {
+        throw new Error('PARTH.AI returned an empty response.');
       }
-
     } catch (err) {
-
-      if (err.name !== 'AbortError' &&
-          controllerRef.current === controller) {
-
+      if (controllerRef.current === controller && (timedOut || err.name !== 'AbortError')) {
         console.error('PARTH.AI streaming error:', err);
-
         setError(
-          'PARTH.AI could not complete the response. Please try again.'
+          timedOut
+            ? 'PARTH.AI took too long to respond. Please try again.'
+            : 'PARTH.AI could not complete the response. Please try again.'
         );
-
         if (!fullAnswer) {
-
-          setMessages(previous =>
-            previous.filter(
-              message => message.id !== assistantId
-            )
+          setMessages((previous) =>
+            previous.filter((message) => message.id !== assistantId)
           );
-
         }
       }
-
     } finally {
-
+      if (idleTimer !== null) clearTimeout(idleTimer);
       if (controllerRef.current === controller) {
-
         controllerRef.current = null;
-
         setLoading(false);
         setStreamStatus('');
-
-        setMessages(previous =>
-          previous.map(message =>
-            message.id === assistantId
-              ? { ...message, streaming: false }
-              : message
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.id === assistantId ? { ...message, streaming: false } : message
           )
         );
       }
     }
   }
 
-
-  // ==========================================
-  // RESET CONVERSATION
-  // ==========================================
-
   function resetChat() {
-
     controllerRef.current?.abort();
     controllerRef.current = null;
-
     setMessages([welcomeMessage]);
     setInput('');
     setLoading(false);
@@ -434,79 +323,35 @@ export default function AIChat({ isOpen, onClose }) {
     setError('');
   }
 
-
-  // ==========================================
-  // HANDLE FORM SUBMISSION
-  // ==========================================
-
   function handleSubmit(event) {
     event.preventDefault();
     sendMessage(input);
   }
 
-
-  // ==========================================
-  // CHAT WINDOW
-  // ==========================================
-
   if (!isOpen) return null;
 
   return (
-    <section
-      id="parth-ai-chat"
-      className="ai-chat-window"
-      aria-label="PARTH AI chatbot"
-    >
-
-      {/* CHAT HEADER */}
-
+    <section id="parth-ai-chat" className="ai-chat-window" aria-label="PARTH AI chatbot">
       <header className="ai-chat-header">
-
         <div className="ai-chat-brand">
-
-          <div className="ai-chat-avatar">
-            <Sparkles size={21} />
-          </div>
-
+          <div className="ai-chat-avatar"><Sparkles size={21} /></div>
           <div className="ai-chat-brand-info">
-
             <h3>PARTH.AI</h3>
-
             <span>
               <i className="ai-chat-status-dot" />
-              RAG PORTFOLIO ASSISTANT
+              AI PORTFOLIO ASSISTANT
             </span>
-
           </div>
         </div>
-
-
         <div className="ai-chat-header-actions">
-
-          <button
-            type="button"
-            onClick={resetChat}
-            title="Reset conversation"
-            aria-label="Reset conversation"
-          >
+          <button type="button" onClick={resetChat} title="Reset conversation" aria-label="Reset conversation">
             <RotateCcw size={17} />
           </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close chatbot"
-            aria-label="Close chatbot"
-          >
+          <button type="button" onClick={onClose} title="Close chatbot" aria-label="Close chatbot">
             <X size={19} />
           </button>
-
         </div>
-
       </header>
-
-
-      {/* CHAT MESSAGES */}
 
       <div
         ref={messagesContainerRef}
@@ -515,28 +360,14 @@ export default function AIChat({ isOpen, onClose }) {
         aria-live="polite"
         aria-relevant="additions text"
       >
-
-        {messages.map(message => (
-
-          <div
-            key={message.id}
-            className={
-              `ai-chat-message ai-chat-${message.role}`
-            }
-          >
-
+        {messages.map((message) => (
+          <div key={message.id} className={`ai-chat-message ai-chat-${message.role}`}>
             {message.role === 'assistant' && (
-              <span className="ai-chat-message-label">
-                PARTH.AI
-              </span>
+              <span className="ai-chat-message-label">PARTH.AI</span>
             )}
-
             <div className="ai-chat-bubble">
-
               {message.role === 'assistant' ? (
-
                 <div className="ai-chat-markdown">
-
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -549,163 +380,111 @@ export default function AIChat({ isOpen, onClose }) {
                   >
                     {message.content}
                   </ReactMarkdown>
-
                   {message.streaming && (
-                    <span
-                      className="ai-stream-cursor"
-                      aria-hidden="true"
-                    />
+                    <span className="ai-stream-cursor" aria-hidden="true" />
                   )}
-
                 </div>
-
               ) : (
-
                 message.content
-
               )}
-
             </div>
-
-            
             {message.role === 'assistant' &&
               message.sources?.length > 0 &&
               !message.streaming && (
-
                 <div className="ai-chat-sources">
-
-                  <span className="ai-chat-sources-heading">
-                    RETRIEVED SOURCES
-                  </span>
-
+                  <span className="ai-chat-sources-heading">RETRIEVED SOURCES</span>
                   <div className="ai-chat-source-list">
-
-                    {message.sources.map(source => (
-
-                      <span
-                        className="ai-chat-source"
-                        key={source}
-                        title={source}
-                      >
+                    {message.sources.map((source) => (
+                      <span className="ai-chat-source" key={source} title={source}>
                         {source}
                       </span>
-
                     ))}
-
                   </div>
-
                 </div>
               )}
-
-
           </div>
-
         ))}
 
-
-        {/* QUICK QUESTIONS */}
-
         {messages.length === 1 && (
-
           <div className="ai-chat-suggestions">
-
             <p>QUICK QUESTIONS</p>
-
-            {suggestions.map(question => (
-
+            {suggestions.map((question) => (
               <button
                 key={question}
                 type="button"
-                disabled={loading}
+                disabled={loading || backendStatus !== 'ready'}
                 onClick={() => sendMessage(question)}
               >
                 {question}
               </button>
-
             ))}
-
           </div>
-
         )}
-
-
-        {/* LIVE STATUS */}
 
         {loading && (
-
-          <div
-            className="ai-chat-stream-status"
-            role="status"
-          >
-
+          <div className="ai-chat-stream-status" role="status">
             <span className="ai-stream-status-dot" />
-
             {streamStatus || 'PARTH.AI is responding...'}
-
           </div>
-
         )}
 
-
-        {/* ERROR */}
-
         {error && (
-
-          <div
-            className="ai-chat-error"
-            role="alert"
-          >
+          <div className="ai-chat-error" role="alert">
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
-
         )}
-
       </div>
 
+      <div className="ai-backend-status" role="status" aria-live="polite">
+        {backendStatus === 'waking' && (
+          <span>⏳ Waking up PARTH.AI server (free hosting)...</span>
+        )}
+        {backendStatus === 'ready' && (
+          <span>🟢 PARTH.AI is ready</span>
+        )}
+        {backendStatus === 'error' && (
+          <div>
+            <span>Unable to connect to PARTH.AI.</span>{' '}
+            <button type="button" onClick={() => setWakeAttempt((n) => n + 1)}>
+              Retry Connection
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* CHAT INPUT */}
-
-      <form
-        className="ai-chat-input-area"
-        onSubmit={handleSubmit}
-      >
-
+      <form className="ai-chat-input-area" onSubmit={handleSubmit}>
         <div className="ai-chat-input-wrap">
-
           <input
             ref={inputRef}
             type="text"
             value={input}
-            onChange={event =>
-              setInput(event.target.value)
-            }
+            onChange={(event) => setInput(event.target.value)}
             placeholder={
-              loading
-                ? 'PARTH.AI is responding...'
-                : 'Ask me about Parth...'
+              backendStatus === 'waking'
+                ? 'Waking up AI server...'
+                : backendStatus === 'error'
+                  ? 'Connection unavailable — retry above'
+                  : loading
+                    ? 'PARTH.AI is responding...'
+                    : 'Ask me about Parth...'
             }
             aria-label="Your message"
             maxLength={500}
-            disabled={loading}
+            disabled={loading || backendStatus !== 'ready'}
           />
-
           <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={loading || backendStatus !== 'ready' || !input.trim()}
             aria-label="Send message"
           >
             <Send size={18} />
           </button>
-
         </div>
-
         <p className="ai-chat-disclaimer">
-          PARTH.AI · LANGCHAIN + RAG + GROQ
+          PARTH.AI · PORTFOLIO KNOWLEDGE + GROQ
         </p>
-
       </form>
-
     </section>
   );
 }
