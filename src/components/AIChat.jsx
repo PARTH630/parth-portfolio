@@ -4,11 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './AIChat.css';
 
-// Set VITE_API_URL in .env.local for local development and in GitHub
-// Actions variables for the deployed website.
+// Configure VITE_API_URL in .env.local and GitHub Actions for deployment.
 const API_URL = (
-  import.meta.env.VITE_API_URL ||
-  'https://parth-portfolio-r152.onrender.com'
+  import.meta.env.VITE_API_URL || 'https://parth-portfolio-r152.onrender.com'
 ).replace(/\/$/, '');
 
 const HEALTH_ATTEMPTS = 5;
@@ -38,15 +36,23 @@ export default function AIChat({ isOpen, onClose }) {
   const [error, setError] = useState('');
   const [backendStatus, setBackendStatus] = useState('waking');
   const [wakeAttempt, setWakeAttempt] = useState(0);
+  const [pending, setPending] = useState(null);
 
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const controllerRef = useRef(null);
   const nextIdRef = useRef(2);
+  const inFlightRef = useRef(false);
+  const pendingRef = useRef(null);
+  const messagesRef = useRef([welcomeMessage]);
 
-  // Start the Render Free backend automatically when this component mounts.
-  // Every request has its OWN AbortController, so a timeout doesn't break
-  // all subsequent attempts. This is bounded; no paid keep-alive service.
+  // Used by synchronous event handlers so successive clicks cannot enqueue twice.
+  function updateMessages(updater) {
+    const next = typeof updater === 'function' ? updater(messagesRef.current) : updater;
+    messagesRef.current = next;
+    setMessages(next);
+  }
+
   useEffect(() => {
     let cancelled = false;
     let activeController = null;
@@ -92,12 +98,10 @@ export default function AIChat({ isOpen, onClose }) {
 
         if (attempt < HEALTH_ATTEMPTS) await waitForRetry();
       }
-
       if (!cancelled) setBackendStatus('error');
     }
 
     checkBackend();
-
     return () => {
       cancelled = true;
       activeController?.abort();
@@ -114,32 +118,44 @@ export default function AIChat({ isOpen, onClose }) {
   }, [messages, loading, streamStatus, backendStatus, isOpen]);
 
   useEffect(() => {
-    if (isOpen && !loading && backendStatus === 'ready') {
-      inputRef.current?.focus();
-    }
-  }, [isOpen, loading, backendStatus]);
+    if (isOpen && !loading) inputRef.current?.focus();
+  }, [isOpen, loading]);
+
+  function cancelCurrent() {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    inFlightRef.current = false;
+    pendingRef.current = null;
+    setPending(null);
+    setLoading(false);
+    setStreamStatus('');
+    updateMessages((previous) =>
+      previous
+        .filter((message) => !message.streaming || message.content.trim())
+        .map((message) => ({ ...message, streaming: false }))
+    );
+  }
 
   useEffect(() => {
-    if (!isOpen && controllerRef.current) {
-      controllerRef.current.abort();
+    if (!isOpen) {
+      // Closing the chat cancels a pending or streaming question.
+      controllerRef.current?.abort();
       controllerRef.current = null;
+      inFlightRef.current = false;
+      pendingRef.current = null;
+      setPending(null);
       setLoading(false);
       setStreamStatus('');
-      setMessages((previous) =>
-        previous
-          .filter((message) => !message.streaming || message.content.trim())
-          .map((message) => ({ ...message, streaming: false }))
-      );
     }
   }, [isOpen]);
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
-  async function sendMessage(text) {
+  function sendMessage(text) {
     const question = text.trim();
-    if (!question || loading || backendStatus !== 'ready') return;
+    if (!question || inFlightRef.current || pendingRef.current) return;
 
-    const conversationHistory = messages
+    const conversationHistory = messagesRef.current
       .filter(
         (message) =>
           message.id !== welcomeMessage.id &&
@@ -152,11 +168,7 @@ export default function AIChat({ isOpen, onClose }) {
         content: message.content.slice(0, 2000),
       }));
 
-    const userMessage = {
-      id: nextIdRef.current++,
-      role: 'user',
-      content: question,
-    };
+    const userMessage = { id: nextIdRef.current++, role: 'user', content: question };
     const assistantId = nextIdRef.current++;
     const assistantMessage = {
       id: assistantId,
@@ -169,9 +181,32 @@ export default function AIChat({ isOpen, onClose }) {
     setInput('');
     setError('');
     setLoading(true);
-    setStreamStatus('Connecting to PARTH.AI...');
-    setMessages((previous) => [...previous, userMessage, assistantMessage]);
+    setStreamStatus(
+      backendStatus === 'ready' ? 'Connecting to PARTH.AI...' : 'Connecting to AI — your question is queued...'
+    );
+    updateMessages((previous) => [...previous, userMessage, assistantMessage]);
 
+    const job = { question, conversationHistory, assistantId };
+    pendingRef.current = job;
+    setPending(job);
+
+    if (backendStatus === 'error') setWakeAttempt((n) => n + 1);
+  }
+
+  // A submitted question is accepted immediately and sent once the server is ready.
+  useEffect(() => {
+    if (!pending || backendStatus !== 'ready' || inFlightRef.current) return;
+    if (pendingRef.current !== pending) return;
+
+    inFlightRef.current = true;
+    pendingRef.current = null;
+    setPending(null);
+    streamAnswer(pending);
+    // streamAnswer uses the job snapshot; only status or job changes trigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, backendStatus]);
+
+  async function streamAnswer({ question, conversationHistory, assistantId }) {
     const controller = new AbortController();
     controllerRef.current = controller;
     let fullAnswer = '';
@@ -189,23 +224,19 @@ export default function AIChat({ isOpen, onClose }) {
     function appendToken(token) {
       if (controllerRef.current !== controller) return;
       fullAnswer += token;
-      setMessages((previous) =>
+      updateMessages((previous) =>
         previous.map((message) =>
-          message.id === assistantId
-            ? { ...message, content: fullAnswer }
-            : message
+          message.id === assistantId ? { ...message, content: fullAnswer } : message
         )
       );
     }
 
     try {
+      setStreamStatus('Connecting to PARTH.AI...');
       resetStreamTimer();
       const response = await fetch(`${API_URL}/chat/stream`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify({ question, history: conversationHistory }),
         signal: controller.signal,
       });
@@ -239,7 +270,7 @@ export default function AIChat({ isOpen, onClose }) {
           const sources = Array.isArray(event.files)
             ? event.files.filter((file) => typeof file === 'string')
             : [];
-          setMessages((previous) =>
+          updateMessages((previous) =>
             previous.map((message) =>
               message.id === assistantId ? { ...message, sources } : message
             )
@@ -293,18 +324,17 @@ export default function AIChat({ isOpen, onClose }) {
             : 'PARTH.AI could not complete the response. Please try again.'
         );
         if (!fullAnswer) {
-          setMessages((previous) =>
-            previous.filter((message) => message.id !== assistantId)
-          );
+          updateMessages((previous) => previous.filter((message) => message.id !== assistantId));
         }
       }
     } finally {
       if (idleTimer !== null) clearTimeout(idleTimer);
       if (controllerRef.current === controller) {
         controllerRef.current = null;
+        inFlightRef.current = false;
         setLoading(false);
         setStreamStatus('');
-        setMessages((previous) =>
+        updateMessages((previous) =>
           previous.map((message) =>
             message.id === assistantId ? { ...message, streaming: false } : message
           )
@@ -314,12 +344,9 @@ export default function AIChat({ isOpen, onClose }) {
   }
 
   function resetChat() {
-    controllerRef.current?.abort();
-    controllerRef.current = null;
-    setMessages([welcomeMessage]);
+    cancelCurrent();
+    updateMessages([welcomeMessage]);
     setInput('');
-    setLoading(false);
-    setStreamStatus('');
     setError('');
   }
 
@@ -337,34 +364,19 @@ export default function AIChat({ isOpen, onClose }) {
           <div className="ai-chat-avatar"><Sparkles size={21} /></div>
           <div className="ai-chat-brand-info">
             <h3>PARTH.AI</h3>
-            <span>
-              <i className="ai-chat-status-dot" />
-              AI PORTFOLIO ASSISTANT
-            </span>
+            <span><i className="ai-chat-status-dot" /> AI PORTFOLIO ASSISTANT</span>
           </div>
         </div>
         <div className="ai-chat-header-actions">
-          <button type="button" onClick={resetChat} title="Reset conversation" aria-label="Reset conversation">
-            <RotateCcw size={17} />
-          </button>
-          <button type="button" onClick={onClose} title="Close chatbot" aria-label="Close chatbot">
-            <X size={19} />
-          </button>
+          <button type="button" onClick={resetChat} title="Reset conversation" aria-label="Reset conversation"><RotateCcw size={17} /></button>
+          <button type="button" onClick={onClose} title="Close chatbot" aria-label="Close chatbot"><X size={19} /></button>
         </div>
       </header>
 
-      <div
-        ref={messagesContainerRef}
-        className="ai-chat-messages"
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions text"
-      >
+      <div ref={messagesContainerRef} className="ai-chat-messages" role="log" aria-live="polite" aria-relevant="additions text">
         {messages.map((message) => (
           <div key={message.id} className={`ai-chat-message ai-chat-${message.role}`}>
-            {message.role === 'assistant' && (
-              <span className="ai-chat-message-label">PARTH.AI</span>
-            )}
+            {message.role === 'assistant' && <span className="ai-chat-message-label">PARTH.AI</span>}
             <div className="ai-chat-bubble">
               {message.role === 'assistant' ? (
                 <div className="ai-chat-markdown">
@@ -372,36 +384,24 @@ export default function AIChat({ isOpen, onClose }) {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       table: ({ children, ...props }) => (
-                        <div className="ai-table-scroll">
-                          <table {...props}>{children}</table>
-                        </div>
+                        <div className="ai-table-scroll"><table {...props}>{children}</table></div>
                       ),
                     }}
                   >
                     {message.content}
                   </ReactMarkdown>
-                  {message.streaming && (
-                    <span className="ai-stream-cursor" aria-hidden="true" />
-                  )}
+                  {message.streaming && <span className="ai-stream-cursor" aria-hidden="true" />}
                 </div>
-              ) : (
-                message.content
-              )}
+              ) : message.content}
             </div>
-            {message.role === 'assistant' &&
-              message.sources?.length > 0 &&
-              !message.streaming && (
-                <div className="ai-chat-sources">
-                  <span className="ai-chat-sources-heading">RETRIEVED SOURCES</span>
-                  <div className="ai-chat-source-list">
-                    {message.sources.map((source) => (
-                      <span className="ai-chat-source" key={source} title={source}>
-                        {source}
-                      </span>
-                    ))}
-                  </div>
+            {message.role === 'assistant' && message.sources?.length > 0 && !message.streaming && (
+              <div className="ai-chat-sources">
+                <span className="ai-chat-sources-heading">RETRIEVED SOURCES</span>
+                <div className="ai-chat-source-list">
+                  {message.sources.map((source) => <span className="ai-chat-source" key={source} title={source}>{source}</span>)}
                 </div>
-              )}
+              </div>
+            )}
           </div>
         ))}
 
@@ -409,14 +409,7 @@ export default function AIChat({ isOpen, onClose }) {
           <div className="ai-chat-suggestions">
             <p>QUICK QUESTIONS</p>
             {suggestions.map((question) => (
-              <button
-                key={question}
-                type="button"
-                disabled={loading || backendStatus !== 'ready'}
-                onClick={() => sendMessage(question)}
-              >
-                {question}
-              </button>
+              <button key={question} type="button" disabled={loading} onClick={() => sendMessage(question)}>{question}</button>
             ))}
           </div>
         )}
@@ -429,26 +422,17 @@ export default function AIChat({ isOpen, onClose }) {
         )}
 
         {error && (
-          <div className="ai-chat-error" role="alert">
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
+          <div className="ai-chat-error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>
         )}
       </div>
 
       <div className="ai-backend-status" role="status" aria-live="polite">
-        {backendStatus === 'waking' && (
-          <span>⏳ Waking up PARTH.AI server (free hosting)...</span>
-        )}
-        {backendStatus === 'ready' && (
-          <span>🟢 PARTH.AI is ready</span>
-        )}
+        {backendStatus === 'waking' && <span>⏳ Connecting to PARTH.AI in the background...</span>}
+        {backendStatus === 'ready' && <span>🟢 PARTH.AI is ready</span>}
         {backendStatus === 'error' && (
           <div>
-            <span>Unable to connect to PARTH.AI.</span>{' '}
-            <button type="button" onClick={() => setWakeAttempt((n) => n + 1)}>
-              Retry Connection
-            </button>
+            <span>Connection unavailable.</span>{' '}
+            <button type="button" onClick={() => setWakeAttempt((n) => n + 1)}>Retry Connection</button>
           </div>
         )}
       </div>
@@ -460,30 +444,14 @@ export default function AIChat({ isOpen, onClose }) {
             type="text"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder={
-              backendStatus === 'waking'
-                ? 'Waking up AI server...'
-                : backendStatus === 'error'
-                  ? 'Connection unavailable — retry above'
-                  : loading
-                    ? 'PARTH.AI is responding...'
-                    : 'Ask me about Parth...'
-            }
+            placeholder={loading ? 'PARTH.AI is responding...' : 'Ask me about Parth...'}
             aria-label="Your message"
             maxLength={500}
-            disabled={loading || backendStatus !== 'ready'}
+            disabled={loading}
           />
-          <button
-            type="submit"
-            disabled={loading || backendStatus !== 'ready' || !input.trim()}
-            aria-label="Send message"
-          >
-            <Send size={18} />
-          </button>
+          <button type="submit" disabled={loading || !input.trim()} aria-label="Send message"><Send size={18} /></button>
         </div>
-        <p className="ai-chat-disclaimer">
-          PARTH.AI · PORTFOLIO KNOWLEDGE + GROQ
-        </p>
+        <p className="ai-chat-disclaimer">PARTH.AI · PORTFOLIO KNOWLEDGE + GROQ</p>
       </form>
     </section>
   );

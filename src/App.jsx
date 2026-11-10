@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import AIWelcome from './components/AIWelcome';
 import AIOrb from './components/AIOrb';
 import AIChat from './components/AIChat';
+import BackendWarmup from './components/BackendWarmup';
 
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -70,7 +71,7 @@ function App() {
   }
 
   // ==========================================
-  // AUTOMATIC PERMANENT GREETING POPUP
+  // AUTOMATIC GREETING POPUP
   // ==========================================
 
   useEffect(() => {
@@ -111,6 +112,14 @@ function App() {
 
   return (
     <>
+
+      {/* =====================================
+          BACKEND WARMUP
+          Runs immediately on portfolio load
+          without blocking the interface.
+      ===================================== */}
+
+      <BackendWarmup />
 
       {/* =====================================
           BATMAN WELCOME SCREEN
@@ -200,7 +209,7 @@ function App() {
       {isDocked && (
         <>
 
-          {/* LangChain + Groq RAG Chatbot */}
+          {/* Groq-powered RAG chatbot */}
           <AIChat
             isOpen={chatOpen}
             onClose={() => setChatOpen(false)}
