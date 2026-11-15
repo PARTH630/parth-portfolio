@@ -778,3 +778,35 @@
     0 0 15px rgba(60, 200, 255, 0.45)
   );
 }
+
+
+/* =========================================================
+   PARTICLES -> REAL PROFILE PHOTO (new, additive effect)
+   Existing rings, beam, scanline, and floating portrait remain.
+   ========================================================= */
+.holo-particle-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+.holo-particle-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(77, 209, 255, 0.65));
+}
+/* Hide the photograph only after its pixels have been sampled. */
+.holo-scene:has(.holo-particle-active) .holo-portrait img {
+  opacity: 0;
+}
+/* Fade the original photo into place as the particles finish assembling. */
+.holo-scene:has(.holo-particle-formed) .holo-portrait img {
+  opacity: 0.88;
+  transition: opacity 0.58s ease-in;
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-particle-layer { display: none; }
+}
