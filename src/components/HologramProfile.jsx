@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate } from 'motion';
 import './HologramProfile.css';
 
@@ -9,165 +9,196 @@ const details = [
   { className: 'orbit-bottom-right', label: 'FOCUS', value: 'Machine Learning' },
 ];
 
-// The effect is contained in the hologram scene, not the whole page.
-// Canvas 2D is used here to avoid requiring WebGPU/Three.js on visitors' devices.
-function ParticlePortrait({ imageRef }) {
-  const sceneRef = useRef(null);
+const FORMATION_SECONDS = 5;
+
+function ParticlePortrait({ imageRef, replayKey, onFinish, introFinished }) {
+  const layerRef = useRef(null);
   const canvasRef = useRef(null);
+  const onFinishRef = useRef(onFinish);
+  useEffect(() => { onFinishRef.current = onFinish; }, [onFinish]);
 
   useEffect(() => {
-    const scene = sceneRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d');
-    const portrait = imageRef.current;
-    if (!scene || !context || !portrait) return;
+    // Do not begin particle assembly behind the welcome screen.
+    if (!introFinished) return;
 
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (media.matches) return; // Show the original photo immediately.
+    const layer = layerRef.current;
+    const canvas = canvasRef.current;
+    const portrait = imageRef.current;
+    const holoScene = layer?.closest('.holo-scene');
+    const ctx = canvas?.getContext('2d', { alpha: true });
+    if (!layer || !ctx || !portrait || !holoScene) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      holoScene.classList.add('holo-photo-revealed');
+      onFinishRef.current?.();
+      return;
+    }
 
     let disposed = false;
-    let started = false;
-    let playback = null;
-    let intersectionObserver = null;
+    let playback;
+    let observer;
+    let hasStarted = false;
+    let revealed = false;
+
+    // Keep the photograph invisible while waiting for the intro and assembly.
+    holoScene.classList.remove('holo-photo-revealed');
+
+    const clearStatus = () => {
+      layer.classList.remove('holo-particle-active', 'holo-particle-formed');
+    };
 
     async function start() {
-      if (disposed || started) return;
-      started = true;
+      if (disposed || hasStarted) return;
+      hasStarted = true;
 
       try {
-        if (!portrait.complete) {
-          await new Promise((resolve, reject) => {
-            portrait.addEventListener('load', resolve, { once: true });
-            portrait.addEventListener('error', reject, { once: true });
-          });
+        // decode() also works when the image loaded before this effect ran.
+        if (!portrait.complete || !portrait.naturalWidth) await portrait.decode();
+        if (disposed || !portrait.naturalWidth) return;
+
+        const rect = layer.getBoundingClientRect();
+        const box = portrait.parentElement.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        if (!width || !height || !box.width || !box.height) {
+          throw new Error('Hologram has zero-size layout');
         }
-        if (!portrait.naturalWidth || disposed) return;
 
-        const sceneWidth = scene.clientWidth;
-        const sceneHeight = scene.clientHeight;
-        if (!sceneWidth || !sceneHeight) return;
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        canvas.width = Math.round(sceneWidth * dpr);
-        canvas.height = Math.round(sceneHeight * dpr);
-        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Use transparent PNG pixels, not a generic silhouette.
+        const sampleW = width < 400 ? 108 : 144;
+        const sampleH = Math.min(204, Math.round(sampleW * portrait.naturalHeight / portrait.naturalWidth));
+        const source = document.createElement('canvas');
+        source.width = sampleW;
+        source.height = sampleH;
+        const sampleCtx = source.getContext('2d', { willReadFrequently: true });
+        if (!sampleCtx) throw new Error('Cannot create sampling canvas');
+        sampleCtx.drawImage(portrait, 0, 0, sampleW, sampleH);
+        const pixels = sampleCtx.getImageData(0, 0, sampleW, sampleH).data;
 
-        // Sample the real PNG's pixels so the dots actually form the portrait.
-        const sampleWidth = sceneWidth < 400 ? 105 : 135;
-        const aspect = portrait.naturalHeight / portrait.naturalWidth;
-        const sampleHeight = Math.min(190, Math.round(sampleWidth * aspect));
-        const offscreen = document.createElement('canvas');
-        offscreen.width = sampleWidth;
-        offscreen.height = sampleHeight;
-        const off = offscreen.getContext('2d', { willReadFrequently: true });
-        if (!off) return;
-        off.drawImage(portrait, 0, 0, sampleWidth, sampleHeight);
-        const pixels = off.getImageData(0, 0, sampleWidth, sampleHeight).data;
-
-        const wrapper = portrait.parentElement;
-        const boxWidth = wrapper.offsetWidth;
-        const boxHeight = wrapper.offsetHeight;
-        // Same 'object-fit: contain' as the existing CSS.
-        const fit = Math.min(boxWidth / portrait.naturalWidth, boxHeight / portrait.naturalHeight);
-        const drawWidth = portrait.naturalWidth * fit;
-        const drawHeight = portrait.naturalHeight * fit;
-        const left = wrapper.offsetLeft - boxWidth / 2 + (boxWidth - drawWidth) / 2;
-        const top = wrapper.offsetTop + (boxHeight - drawHeight) / 2;
+        // Exact object-fit: contain rectangle, measured relative to canvas.
+        const fit = Math.min(box.width / portrait.naturalWidth, box.height / portrait.naturalHeight);
+        const visibleW = portrait.naturalWidth * fit;
+        const visibleH = portrait.naturalHeight * fit;
+        const originX = box.left - rect.left + (box.width - visibleW) / 2;
+        const originY = box.top - rect.top + (box.height - visibleH) / 2;
 
         const dots = [];
-        const step = sceneWidth < 400 ? 2 : 2;
-        for (let y = 0; y < sampleHeight; y += step) {
-          for (let x = 0; x < sampleWidth; x += step) {
-            const index = (y * sampleWidth + x) * 4;
-            const alpha = pixels[index + 3] / 255;
-            if (alpha < 0.28 || Math.random() > alpha * 0.82) continue;
+        for (let y = 0; y < sampleH; y += 2) {
+          for (let x = 0; x < sampleW; x += 2) {
+            const pixelIndex = (y * sampleW + x) * 4;
+            const alpha = pixels[pixelIndex + 3] / 255;
+            if (alpha < 0.24 || Math.random() > alpha * 0.9) continue;
+
             const angle = Math.random() * Math.PI * 2;
-            const radius = (0.34 + Math.random() * 0.62) * Math.max(sceneWidth, sceneHeight);
-            const brightness = (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+            const radius = (0.3 + Math.random() * 0.9) * Math.max(width, height);
+            const r = pixels[pixelIndex];
+            const g = pixels[pixelIndex + 1];
+            const b = pixels[pixelIndex + 2];
             dots.push({
-              x0: sceneWidth / 2 + Math.cos(angle) * radius,
-              y0: sceneHeight / 2 + Math.sin(angle) * radius,
-              x1: left + ((x + 0.5) / sampleWidth) * drawWidth,
-              y1: top + ((y + 0.5) / sampleHeight) * drawHeight,
+              startX: width / 2 + Math.cos(angle) * radius,
+              startY: height / 2 + Math.sin(angle) * radius,
+              endX: originX + ((x + 0.5) / sampleW) * visibleW,
+              endY: originY + ((y + 0.5) / sampleH) * visibleH,
+              delay: Math.random() * 0.25,
               phase: Math.random() * Math.PI * 2,
-              delay: Math.random() * 0.32,
-              size: 0.65 + Math.random() * 0.8,
-              alpha: 0.52 + brightness / 700,
-              gold: Math.random() < 0.085,
+              size: 1.2 + Math.random() * 1.3,
+              opacity: 0.65 + (r + g + b) / 255 / 9,
+              color: Math.random() < 0.09 ? '#f3c776' : '#79ddff',
             });
           }
         }
-        if (disposed || dots.length === 0) return;
+        if (disposed || dots.length === 0) throw new Error('No visible portrait pixels');
 
-        // Only hide the original photo when the particle animation can run.
-        scene.classList.add('holo-particle-active');
-        const duration = 3.4;
+        layer.classList.add('holo-particle-active');
+        console.info(`[PARTH hologram] Forming portrait with ${dots.length} particles`);
+
         const ease = (t) => 1 - Math.pow(1 - t, 3);
         const render = (progress) => {
           if (disposed) return;
-          context.clearRect(0, 0, sceneWidth, sceneHeight);
-          context.globalCompositeOperation = 'lighter';
-          for (const p of dots) {
-            const local = Math.max(0, Math.min(1, (progress - p.delay) / (1 - p.delay)));
+          ctx.clearRect(0, 0, width, height);
+          ctx.globalCompositeOperation = 'lighter';
+          for (const dot of dots) {
+            const local = Math.max(0, Math.min(1, (progress - dot.delay) / (1 - dot.delay)));
             const amount = ease(local);
-            const swirl = (1 - amount) * Math.sin(progress * 16 + p.phase) * 22;
-            const x = p.x0 + (p.x1 - p.x0) * amount + swirl;
-            const y = p.y0 + (p.y1 - p.y0) * amount + swirl * 0.45;
-            const fade = progress > 0.84 ? Math.max(0, (1 - progress) / 0.16) : 1;
-            context.globalAlpha = p.alpha * fade * (0.45 + 0.55 * local);
-            context.fillStyle = p.gold ? '#f3c776' : '#75d8f6';
-            context.fillRect(x, y, p.size * 1.25, p.size * 1.25);
+            const swirl = (1 - amount) * Math.sin(progress * 17 + dot.phase) * 28;
+            const x = dot.startX + (dot.endX - dot.startX) * amount + swirl;
+            const y = dot.startY + (dot.endY - dot.startY) * amount + swirl * 0.4;
+            const fade = progress > 0.82 ? Math.max(0, (1 - progress) / 0.18) : 1;
+            ctx.globalAlpha = dot.opacity * (0.4 + local * 0.6) * fade;
+            ctx.fillStyle = dot.color;
+            ctx.fillRect(x, y, dot.size, dot.size);
           }
-          context.globalAlpha = 1;
-          context.globalCompositeOperation = 'source-over';
-          if (progress >= 0.82) scene.classList.add('holo-particle-formed');
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+          if (progress >= 0.84 && !revealed) {
+            revealed = true;
+            layer.classList.add('holo-particle-formed');
+            holoScene.classList.add('holo-photo-revealed');
+          }
         };
 
         playback = animate(0, 1, {
-          duration,
+          duration: FORMATION_SECONDS,
           ease: 'linear',
           onUpdate: render,
           onComplete: () => {
             if (disposed) return;
-            context.clearRect(0, 0, sceneWidth, sceneHeight);
-            scene.classList.remove('holo-particle-active');
-            scene.classList.remove('holo-particle-formed');
+            ctx.clearRect(0, 0, width, height);
+            clearStatus();
+            holoScene.classList.add('holo-photo-revealed');
+            console.info('[PARTH hologram] Particle formation complete');
+            onFinishRef.current?.();
           },
         });
       } catch (error) {
-        // A photo-loading or canvas error should never hide the real portrait.
-        console.warn('Hologram particle effect unavailable:', error);
-        scene.classList.remove('holo-particle-active', 'holo-particle-formed');
+        console.warn('[PARTH hologram] Particle effect unavailable:', error);
+        clearStatus();
+        holoScene.classList.add('holo-photo-revealed');
+        onFinishRef.current?.();
       }
     }
 
-    // Start only once when the visitor can actually see the hologram.
-    intersectionObserver = new IntersectionObserver((entries) => {
+    observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
-        intersectionObserver?.disconnect();
+        observer.disconnect();
         start();
       }
-    }, { threshold: 0.12 });
-    intersectionObserver.observe(scene);
+    }, { threshold: 0.45 });
+    observer.observe(layer);
 
     return () => {
       disposed = true;
-      intersectionObserver?.disconnect();
+      observer?.disconnect();
       playback?.stop();
-      scene.classList.remove('holo-particle-active', 'holo-particle-formed');
+      clearStatus();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [imageRef]);
+  }, [imageRef, replayKey, introFinished]);
 
   return (
-    <div className="holo-particle-layer" ref={sceneRef} aria-hidden="true">
+    <div className="holo-particle-layer" ref={layerRef} aria-hidden="true">
       <canvas className="holo-particle-canvas" ref={canvasRef} />
     </div>
   );
 }
 
-export default function HologramProfile() {
+export default function HologramProfile({ introFinished = false }) {
   const imageRef = useRef(null);
+  const [replayKey, setReplayKey] = useState(0);
+  const [isForming, setIsForming] = useState(false);
   const photo = `${import.meta.env.BASE_URL}images/profile.png`;
+
+  const finish = useCallback(() => setIsForming(false), []);
+  const replay = () => {
+    setIsForming(true);
+    setReplayKey((value) => value + 1);
+  };
 
   function handleMove(event) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -203,7 +234,7 @@ export default function HologramProfile() {
           <div className="holo-scanline" />
         </div>
 
-        <ParticlePortrait imageRef={imageRef} />
+        <ParticlePortrait imageRef={imageRef} replayKey={replayKey} onFinish={finish} introFinished={introFinished} />
 
         {details.map((detail) => (
           <div className={`holo-data ${detail.className}`} key={detail.label}>
@@ -211,6 +242,7 @@ export default function HologramProfile() {
             <strong>{detail.value}</strong>
           </div>
         ))}
+
         <div className="holo-platform"><div className="holo-platform-inner" /></div>
       </div>
 
@@ -218,7 +250,17 @@ export default function HologramProfile() {
         <p>IDENTITY VERIFIED</p>
         <h2>PARTH PATKAR</h2>
         <span>Senior Software Engineer · AI &amp; Data Science</span>
+        <button
+          type="button"
+          className="holo-replay-button"
+          onClick={replay}
+          disabled={isForming || !introFinished}
+          aria-label="Replay hologram particle formation"
+        >
+          {isForming ? 'ASSEMBLING...' : '↻ REPLAY HOLOGRAM'}
+        </button>
       </div>
+
       <div className="holo-footer">
         <span>SYS.STATUS: ACTIVE</span>
         <span>HOLOGRAPHIC INTERFACE // 2026</span>

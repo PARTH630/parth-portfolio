@@ -810,3 +810,59 @@
 @media (prefers-reduced-motion: reduce) {
   .holo-particle-layer { display: none; }
 }
+
+/* Add to the bottom of your existing HologramProfile.css */
+.holo-particle-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+.holo-particle-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(77, 209, 255, 0.6));
+}
+.holo-scene:has(.holo-particle-active) .holo-portrait img { opacity: 0; }
+.holo-scene:has(.holo-particle-formed) .holo-portrait img {
+  opacity: 0.88;
+  transition: opacity 0.75s ease-in;
+}
+.holo-replay-button {
+  display: block;
+  margin: 14px auto 0;
+  padding: 8px 15px;
+  border: 1px solid rgba(120, 221, 255, 0.55);
+  border-radius: 6px;
+  background: rgba(9, 24, 34, 0.75);
+  color: #a6e8ff;
+  font: 10px monospace;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+}
+.holo-replay-button:hover { border-color: #e6b93f; color: #e6b93f; }
+.holo-replay-button:disabled { opacity: 0.5; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  .holo-particle-layer { display: none; }
+}
+
+/* Append to the END of HologramProfile.css.
+   The portrait stays hidden until the particles nearly finish assembling. */
+.holo-scene .holo-portrait img {
+  opacity: 0 !important;
+  transition: opacity 0.85s ease-in !important;
+}
+
+.holo-scene.holo-photo-revealed .holo-portrait img {
+  opacity: 0.88 !important;
+}
+
+/* Avoid hiding the real photo for users who request reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .holo-scene .holo-portrait img {
+    transition: none !important;
+  }
+}
