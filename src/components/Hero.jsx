@@ -8,7 +8,7 @@ import {
 
 import './Hero.css';
 
-function Hero() {
+function Hero({ introFinished = false }) {
   const email = 'parthpatkar169@gmail.com';
 
   // Automatically handles localhost and GitHub Pages.
@@ -22,8 +22,6 @@ function Hero() {
 
       {/* Gotham background video */}
       <div className="hero-background" aria-hidden="true">
-        
-        
         <video
           className="hero-video"
           src={backgroundVideo}
@@ -32,29 +30,30 @@ function Hero() {
           loop
           playsInline
           preload="auto"
-          onLoadedData={(e) => {
-            console.log("Gotham video loaded");
-            e.currentTarget.play().catch((error) => {
-              console.warn("Video autoplay blocked:", error);
+          onLoadedData={(event) => {
+            console.log('Gotham video loaded');
+
+            event.currentTarget.play().catch((error) => {
+              console.warn('Video autoplay blocked:', error);
             });
           }}
-          onError={(e) => {
+          onError={(event) => {
             console.error(
-              "Gotham video failed:",
-              e.currentTarget.error
+              'Gotham video failed:',
+              event.currentTarget.error
             );
           }}
         />
 
-        <div className="hero-overlay"></div>
-        <div className="hero-light"></div>
+        <div className="hero-overlay" />
+        <div className="hero-light" />
       </div>
 
       {/* Hero introduction */}
       <div className="hero-content">
 
         <div className="availability">
-          <span className="status-dot"></span>
+          <span className="status-dot" />
           DATA SCIENCE · AI · MACHINE LEARNING
         </div>
 
@@ -69,11 +68,13 @@ function Hero() {
         </h1>
 
         <p className="hero-description">
-          I'm passionate about AI Engineering and Data Science, 
-          with a background in Metallurgical and Materials Engineering from MNIT Jaipur. 
-          I enjoy transforming raw data into actionable insights, 
-          developing machine learning models, and building intelligent, 
-          real-world applications using Generative AI, LLMs, and modern AI technologies.
+          I'm passionate about AI Engineering and Data Science,
+          with a background in Metallurgical and Materials
+          Engineering from MNIT Jaipur.
+          I enjoy transforming raw data into actionable insights,
+          developing machine learning models, and building
+          intelligent, real-world applications using Generative AI,
+          LLMs, and modern AI technologies.
         </p>
 
         {/* Action buttons */}
@@ -129,6 +130,7 @@ function Hero() {
           </a>
 
         </div>
+
       </div>
 
       {/* Batman holographic profile */}
@@ -137,9 +139,12 @@ function Hero() {
         <div
           className="glow-circle"
           aria-hidden="true"
-        ></div>
+        />
 
-        <HologramProfile />
+        {/* Start particle formation after welcome animation */}
+        <HologramProfile
+          introFinished={introFinished}
+        />
 
       </div>
 

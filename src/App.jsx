@@ -31,6 +31,9 @@ function App() {
   const [isFlying, setIsFlying] = useState(false);
   const [isDocked, setIsDocked] = useState(false);
 
+  // NEW: Allow hologram formation only after welcome ends
+  const [introFinished, setIntroFinished] = useState(false);
+
   // ==========================================
   // CHATBOT STATES
   // ==========================================
@@ -52,7 +55,13 @@ function App() {
   }, []);
 
   const handleWelcomeComplete = useCallback(() => {
+
+    // Remove welcome overlay
     setShowWelcome(false);
+
+    // NEW: Signal that hologram animation may begin
+    setIntroFinished(true);
+
   }, []);
 
   // ==========================================
@@ -144,7 +153,7 @@ function App() {
 
       <main>
 
-        <Hero />
+        <Hero introFinished={introFinished} />
 
         <div className="cinematic-sections">
 
@@ -170,12 +179,21 @@ function App() {
             <div className="sections-video-overlay" />
           </div>
 
-          {/* Portfolio sections */}
+          {/* =====================================
+              PORTFOLIO SECTIONS
+          ===================================== */}
+
+          {/* NEW: Pass intro completion to About */}
           <About />
+
           <Skills />
+
           <Projects />
+
           <Experience />
+
           <Achievements />
+
           <Contact />
 
         </div>
